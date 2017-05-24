@@ -1,217 +1,183 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace My_own_lang_interpreter_console_
 {
     class Tokenizer
-    {        
-            const char end_symbol = '$';
-            string TEXT;
-            int POS;
-            char CUR_CHAR;
-            Dictionary<char, Token> SINGLE_TOKENS = new Dictionary<char, Token>
+    {
+        const char EndSymbol = '$';
+        string Text;
+        int CurrentPosition;
+        private char CurrentChar
+        {
+            get
             {
-                ['+'] = new Token(token_type.PLUS),
-                ['-'] = new Token(token_type.MINUS),
-                ['*'] = new Token(token_type.MUL),
-                ['/'] = new Token(token_type.DIV),
-                ['('] = new Token(token_type.L_PAR),
-                [')'] = new Token(token_type.R_PAR),
-                [':'] = new Token(token_type.COLON),
-                [';'] = new Token(token_type.SEMI),
-                ['.'] = new Token(token_type.DOT),
-                [','] = new Token(token_type.COMA),
-                ['='] = new Token(token_type.EQUAL),
-                ['^'] = new Token(token_type.POW),
-                ['|'] = new Token(token_type.DIZ),
-                ['&'] = new Token(token_type.CON),
-                ['>'] = new Token(token_type.LESS),
-                ['<'] = new Token(token_type.LESS),
-                ['{'] = new Token(token_type.L_FIGURE),
-                ['}'] = new Token(token_type.R_FIGURE),                
-            };
-            Dictionary<string, Token> RESERVED_WORDS = new Dictionary<string, Token>
-            {
-                ["IF"] = new Token(token_type.IF),
-                ["ELSE"] = new Token(token_type.ELSE),
-                ["WHILE"] = new Token(token_type.WHILE),
-                ["WRITE"] = new Token(token_type.WRITE_FUNCTION),
-                ["READ"] = new Token(token_type.READ_FUNCTION),
-                ["INT"] = new Token(token_type.TYPE_INT),
-                ["DOUBLE"] = new Token(token_type.TYPE_DBL),
-                ["BOOL"] = new Token(token_type.TYPE_BOOL),
-                ["CHAR"] = new Token(token_type.TYPE_CHAR),
-                ["STRING"] = new Token(token_type.TYPE_STRING),
-                ["TRUE"] = new Token(token_type.BOOL, true),
-                ["FALSE"] = new Token(token_type.BOOL, false),
-
-            };
-            public Tokenizer(string text)
-            {
-                TEXT = text;
-                POS = 0;
-                try
-                {
-                    CUR_CHAR = TEXT[POS];
-                }
-                catch
-                {
-                    CUR_CHAR = end_symbol;
-                }
-            }
-            void advance()
-            {
-                POS++;
-                if (POS < TEXT.Length)
-                    CUR_CHAR = TEXT[POS];
+                if (CurrentPosition < Text.Length)
+                    return Text[CurrentPosition];
                 else
-                    CUR_CHAR = end_symbol;
+                    return EndSymbol;
             }
-            char peek()
-            {
-                if (POS + 1 < TEXT.Length)
-                    return TEXT[POS + 1];
-                else
-                    return end_symbol;
-            }
-            void skip_space()
-            {
-                while ((CUR_CHAR == ' ') && (CUR_CHAR != end_symbol) || ((CUR_CHAR == '\n') && (CUR_CHAR != end_symbol)) || ((CUR_CHAR == '\r') && (CUR_CHAR != end_symbol)))
-                    advance();
-            }
-            Token number()
-            {
-                string res = "";
-
-                while (char.IsDigit(CUR_CHAR))
-                {
-                    res += CUR_CHAR;
-                    advance();
-                }
-                if (CUR_CHAR == '.')
-                {
-                    res += ',';
-                    advance();
-                    while (char.IsDigit(CUR_CHAR))
-                    {
-                        res += CUR_CHAR;
-                        advance();
-                    }
-                    return new Token(token_type.DOUBLE, double.Parse(res));
-                }
-                else
-                    return new Token(token_type.INTEGER, int.Parse(res));
-
-            }
-            Token string_token()
-            {
-            string res = "";
-            advance();
-            while (CUR_CHAR != '"')
-            {
-                res += CUR_CHAR;
-                advance();
-            }
-            advance();
-            return new Token(token_type.STRING,res);
-            }
-            Token id_token()
-            {
-
-                string res = "";
-                if (CUR_CHAR == '_')
-                {
-                    res += CUR_CHAR;
-                    advance();
-                }
-                if (char.IsLetter(CUR_CHAR))
-                {
-                    while (char.IsLetterOrDigit(CUR_CHAR))
-                    {
-                        res += CUR_CHAR;
-                        advance();
-                    }
-                    Token tmp = new Token(token_type.ID, res);
-                    if (RESERVED_WORDS.TryGetValue(res.ToUpper(), out tmp))
-                        return tmp;
-                    else
-                        return new Token(token_type.ID, res);
-                }
-                else
-                {
-                    error();
-                    return new Token(token_type.ID, "WRONG ID");
-                }
-            }
-            public Token get_next_token()
-            {
-                while (char.IsWhiteSpace(CUR_CHAR) || (CUR_CHAR == '\n') || (CUR_CHAR == '\r'))
-                    skip_space();
-
-
-                Token res = null;
-            if (char.IsDigit(CUR_CHAR))
-                return number();
-            else if (char.IsLetter(CUR_CHAR) || (CUR_CHAR == '_'))
-                return id_token();
-            else if (CUR_CHAR == '\"')
-                return string_token();
-            else if (string.Format("{0}{1}", CUR_CHAR, peek()) == ":=")
-            {
-                advance();
-                advance();
-                return new Token(token_type.ASSIGN);
-            }
-            else if ((CUR_CHAR.ToString() + peek().ToString()) == "==")
-            {
-                advance();
-                advance();
-                return new Token(token_type.EQUAL_BOOL);
-            }
-            else if (SINGLE_TOKENS.TryGetValue(CUR_CHAR, out res))
-            {
-                advance();
-                return res;
-            }
-            else if (CUR_CHAR == end_symbol)
-                return new Token(token_type.EOF);
+        }
+        Dictionary<char, Token> SingleToken = new Dictionary<char, Token>
+        {
+            ['+'] = new Token(token_type.PLUS),
+            ['-'] = new Token(token_type.MINUS),
+            ['*'] = new Token(token_type.MUL),
+            ['/'] = new Token(token_type.DIV),
+            ['('] = new Token(token_type.L_PAR),
+            [')'] = new Token(token_type.R_PAR),
+            [':'] = new Token(token_type.COLON),
+            [';'] = new Token(token_type.SEMI),
+            ['.'] = new Token(token_type.DOT),
+            [','] = new Token(token_type.COMA),
+            ['='] = new Token(token_type.EQUAL),
+            ['^'] = new Token(token_type.POW),
+            ['|'] = new Token(token_type.DIZ),
+            ['&'] = new Token(token_type.CON),
+            ['>'] = new Token(token_type.MORE),
+            ['<'] = new Token(token_type.LESS),
+            ['{'] = new Token(token_type.L_FIGURE),
+            ['}'] = new Token(token_type.R_FIGURE),
+            ['!'] = new Token(token_type.NOT),
+        };
+        Dictionary<string, Token> ReservedWord = new Dictionary<string, Token>
+        {
+            ["IF"] = new Token(token_type.IF),
+            ["ELSE"] = new Token(token_type.ELSE),
+            ["WHILE"] = new Token(token_type.WHILE),
+            ["WRITE"] = new Token(token_type.WRITE_FUNCTION),
+            ["READ"] = new Token(token_type.READ_FUNCTION),
+            ["INT"] = new Token(token_type.TYPE_INT),
+            ["DOUBLE"] = new Token(token_type.TYPE_DBL),
+            ["BOOL"] = new Token(token_type.TYPE_BOOL),
+            ["CHAR"] = new Token(token_type.TYPE_CHAR),
+            ["STRING"] = new Token(token_type.TYPE_STRING),
+            ["TRUE"] = new Token(token_type.BOOL, true),
+            ["FALSE"] = new Token(token_type.BOOL, false),
+        };
+        public Tokenizer(string text)
+        {
+            Text = text;
+            CurrentPosition = 0;
+        }
+        void Advance()
+        {
+            CurrentPosition++;
+        }
+        char peek()
+        {
+            if (CurrentPosition + 1 < Text.Length)
+                return Text[CurrentPosition + 1];
             else
+                return EndSymbol;
+        }
+        void SkipSpace()
+        {
+            while (((CurrentChar == ' ') || (CurrentChar == '\n') || (CurrentChar == '\r')) && (CurrentChar != EndSymbol))
+                Advance();
+        }
+        Token Number()
+        {
+            string res = "";
+            while (char.IsDigit(CurrentChar))
             {
-                error();
-                return null;
+                res += CurrentChar;
+                Advance();
             }
+            if (CurrentChar == '.')
+            {
+                res += ',';
+                Advance();
+                while (char.IsDigit(CurrentChar))
+                {
+                    res += CurrentChar;
+                    Advance();
+                }
+                return new Token(token_type.DOUBLE, double.Parse(res));
             }
-            public List<Token> make_list()
+            else
+                return new Token(token_type.INTEGER, int.Parse(res));
+        }
+        Token StringToken()
+        {
+            string res = "";
+            Advance();
+            while (CurrentChar != '"')
+            {
+                res += CurrentChar;
+                Advance();
+            }
+            Advance();
+            return new Token(token_type.STRING,res);
+        }
+        Token IDToken()
+        {
+            string res = "";
+            if (CurrentChar == '_')
+            {
+                res += CurrentChar;
+                Advance();
+            }
+            if (char.IsLetter(CurrentChar))
+            {
+                while (char.IsLetterOrDigit(CurrentChar))
+                {
+                    res += CurrentChar;
+                    Advance();
+                }
+                Token tmp = new Token(token_type.ID, res);
+                if (ReservedWord.TryGetValue(res.ToUpper(), out tmp))
+                    return tmp;
+                else
+                    return new Token(token_type.ID, res);
+            }
+                else
+            {
+                Error();
+                return new Token(token_type.ID, "WRONG ID");
+            }
+        }
+        public Token GetNextToken()
+        {
+            SkipSpace();
+            Token res = null;
+            if (char.IsDigit(CurrentChar))
+                res = Number();
+            else if (char.IsLetter(CurrentChar) || (CurrentChar == '_'))
+                res = IDToken();
+            else if (CurrentChar == '\"')
+                res = StringToken();            
+            else if ((CurrentChar.ToString() + peek().ToString()) == "==")
+            {
+                Advance();
+                Advance();
+                res = new Token(token_type.EQUAL_BOOL);
+            }
+            else if (SingleToken.TryGetValue(CurrentChar, out res))            
+                Advance();            
+            else if (CurrentChar == EndSymbol)
+                res = new Token(token_type.EOF);
+            else            
+                Error();         
+            return res;
+        }
+        public Token[] MakeTokenArray()
         {
             List<Token> result = new List<Token>();
             Token tmp;
             do
             {
-                tmp = get_next_token();
+                tmp = GetNextToken();
                 result.Add(tmp);
             }
             while (!tmp.compare_type(token_type.EOF));            
-            return result;
-        }
-        public List<token_type> make_types()
+            return result.ToArray();
+        }                       
+        void Error()
         {
-            List<token_type> result = new List<token_type>();
-            Token tmp;
-            do
-            {
-                tmp = get_next_token();
-                result.Add(tmp.type);
-            }
-            while (!tmp.compare_type(token_type.EOF));
-            return result;
+            throw new Exception("Error in Toeknizer:" + CurrentChar);
         }
-        void error()
-            {
-                throw new Exception("Error in Toeknizer:" + CUR_CHAR);
-            }
-        }
+    }
     
 }

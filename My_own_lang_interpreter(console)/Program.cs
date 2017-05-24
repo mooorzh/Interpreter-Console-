@@ -10,10 +10,11 @@ namespace My_own_lang_interpreter_console_
     {
         static void Main(string[] args)
         {
-            Interpreter a = new Interpreter("int a = 5;int b;");            
-            Console.WriteLine(string.Join(";",a.token_list));
-            Console.WriteLine(a.run());
-            Console.ReadKey();
+            Console.WriteLine("Введите Путь к коду программы:");
+            string path = Console.ReadLine();
+            string text = System.IO.File.ReadAllText("test.txt");
+            Interpreter a = new InterpreterIOConsole(text);            
+            a.Run();
         }
     }
 }

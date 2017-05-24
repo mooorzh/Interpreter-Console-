@@ -47,6 +47,7 @@ namespace My_own_lang_interpreter_console_
         R_FIGURE,
         D_QUOTE,
         ELSE,
+        NOT,
     }
     class Token
     {

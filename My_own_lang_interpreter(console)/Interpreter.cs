@@ -5,89 +5,92 @@ using System.Collections.Generic;
 
 namespace My_own_lang_interpreter_console_
 {
-    class Interpreter
+    abstract class Interpreter
     {
-        private const double delta = 1E-10;        
-        private int current_position;
-        public List<Token> token_list;
-        private Dictionary<string, object> var_values = new Dictionary<string, object>();
-        private Dictionary<string, token_type> var_types = new Dictionary<string, token_type>();
-        private Token current_token
+        protected const double delta = 1E-10;
+        protected int CurrentPosition;
+        protected Token[] TokenList;
+        protected Dictionary<string, object> VarValues = new Dictionary<string, object>();
+        protected Dictionary<string, token_type> VarTypes = new Dictionary<string, token_type>();
+        protected Token CurrentToken
         {
             get
             {
-                return token_list[current_position];
+                return TokenList[CurrentPosition];
             }
         }
         public Interpreter(string text)
         {
-            current_position = 0;
+            CurrentPosition = 0;
             Tokenizer lexer = new Tokenizer(text);
-            token_list = lexer.make_list();                          
+            TokenList = lexer.MakeTokenArray();                          
         }
-        private void error(string explain = "")
+        protected void Error(string explain = "")
         {
             throw new Exception(explain);
         }
-        private void eat(token_type expected_type)
+        protected void Eat(token_type expected_type)
         {
-            if (current_token.compare_type(expected_type))            
-                current_position++;           
+            if (CurrentToken.compare_type(expected_type))            
+                CurrentPosition++;           
             else
-                error(string.Format("Expected token type:{0} Acual token type:{1}",expected_type.ToString(),current_token.type.ToString()));
+                Error(string.Format("Expected token type:{0} Acual token type:{1}",expected_type.ToString(),CurrentToken.type.ToString()));
         }
-        public string run()
+        public virtual string Run()
         {
-            while (!current_token.compare_type(token_type.EOF))
+            while (!CurrentToken.compare_type(token_type.EOF))
             {
-                sentense();
-                eat(token_type.SEMI);
+                Sentense();
+                Eat(token_type.SEMI);
             }
-            return string.Join(";",var_types)+Environment.NewLine+ string.Join(";", var_values);
+            return string.Join(";",VarTypes)+Environment.NewLine+ string.Join(";", VarValues);
         }
-        private void block()
+        protected void Block()
         {            
-            eat(token_type.L_FIGURE);
-            while (!current_token.compare_type(token_type.R_FIGURE))
+            Eat(token_type.L_FIGURE);
+            while (!CurrentToken.compare_type(token_type.R_FIGURE))
             {
-                sentense();
-                eat(token_type.SEMI);                
+                Sentense();
+                Eat(token_type.SEMI);                
             }
-            eat(token_type.R_FIGURE);
+            Eat(token_type.R_FIGURE);
         }
-        private void skip_block()
+        protected void SkipBlock()
         {
-            eat(token_type.L_FIGURE);
-            while (!current_token.compare_type(token_type.R_FIGURE))                            
-                eat(current_token.type);            
-            eat(token_type.R_FIGURE);
-        }
-        private void sentense()
-        {
-            Console.WriteLine(current_token.type.ToString());
-            Console.WriteLine(current_token.value);
-            if (current_token.is_type())         
-                declaration_sentense();           
-            else if (current_token.compare_type(token_type.ID))
-                equation_sentense();
-            else if (current_token.compare_type(token_type.IF))
-                if_sentense();
-            else if (current_token.compare_type(token_type.WHILE))
-                while_sentense();
-            else if (current_token.is_function())
-                function_call_sentense();
+            Eat(token_type.L_FIGURE);
+            while (!CurrentToken.compare_type(token_type.R_FIGURE))
+            {
+                if (CurrentToken.compare_type(token_type.L_FIGURE))
+                    SkipBlock();
+                else
+                    Eat(CurrentToken.type);
+            }        
+            Eat(token_type.R_FIGURE);
+        }       
+        protected void Sentense()
+        {    
+            if (CurrentToken.is_type())         
+                DeclarationSentense();           
+            else if (CurrentToken.compare_type(token_type.ID))
+                EquationSentense();
+            else if (CurrentToken.compare_type(token_type.IF))
+                IfSentense();
+            else if (CurrentToken.compare_type(token_type.WHILE))
+                WhileSentense();
+            else if (CurrentToken.is_function())
+                FunctionCallSentense();
             else
-                error();
+                Error();
         }
-        private void skip_sentense()
+        protected void SkipSentense()
         {
-            while (!current_token.compare_type(token_type.SEMI))
-                eat(current_token.type);            
+            while (!CurrentToken.compare_type(token_type.SEMI))
+                Eat(CurrentToken.type);            
         }
-        private void declaration_sentense()
+        protected void DeclarationSentense()
         {
-            Token var_type = current_token;
-            eat(var_type.type);
+            Token var_type = new Token(CurrentToken.type);
+            Eat(var_type.type);
             if (var_type.compare_type(token_type.TYPE_BOOL))
                 var_type.type = token_type.BOOL;
             else if (var_type.compare_type(token_type.TYPE_INT))
@@ -100,103 +103,113 @@ namespace My_own_lang_interpreter_console_
                 var_type.type = token_type.STRING;
             do
             {
-                if (current_token.compare_type(token_type.COMA))
-                    eat(token_type.COMA);
-                if (current_token.compare_type(token_type.ID))
+                if (CurrentToken.compare_type(token_type.COMA))
+                    Eat(token_type.COMA);
+                if (CurrentToken.compare_type(token_type.ID))
                 {
-                    var_types.Add((string)current_token.value,var_type.type);
-                    if (token_list[current_position + 1].compare_type(token_type.EQUAL))
-                        equation_sentense();
+                    VarTypes.Add((string)CurrentToken.value,var_type.type);
+                    if (TokenList[CurrentPosition + 1].compare_type(token_type.EQUAL))
+                        EquationSentense();
                     else                    
-                        eat(token_type.ID);                    
+                        Eat(token_type.ID);                    
                 }                
-            } while (current_token.compare_type(token_type.COMA));
+            } while (CurrentToken.compare_type(token_type.COMA));
         }
-        private void equation_sentense()
+        protected void EquationSentense()
         {
-            Token l_variable = current_token;
+            Token l_variable = CurrentToken;
             token_type l_variable_type;
-            if (var_types.TryGetValue((string)l_variable.value, out l_variable_type))
+            if (VarTypes.TryGetValue((string)l_variable.value, out l_variable_type))
             {                
-                eat(token_type.ID);
-                eat(token_type.EQUAL);
-                Token r_variable = expression();
+                Eat(token_type.ID);
+                Eat(token_type.EQUAL);
+                Token r_variable = Expression();
                 if (r_variable.compare_type(l_variable_type))
-                    var_values[(string)l_variable.value] = r_variable.value;
+                    VarValues[(string)l_variable.value] = r_variable.value;
                 else
-                    error(l_variable_type.ToString()+"!=" + r_variable.type.ToString());
+                    Error(l_variable_type.ToString()+"!=" + r_variable.type.ToString());
             }
             else
-                error();
+                Error();
         }
-        private Token expression()
+        protected Token Expression()
         {
-            if (current_token.compare_type(token_type.STRING))
+            if (CurrentToken.compare_type(token_type.STRING))
             {
-                Token tmp = current_token;
-                eat(token_type.STRING);
+                Token tmp = CurrentToken;
+                Eat(token_type.STRING);
                 return tmp;
             }
             else
-                return bool_expr();
+                return BoolExpr();
         }
-        private Token bool_expr()
+        protected Token BoolExpr()
         {
-            Token res = bool_term();
-            while (current_token.compare_type(token_type.DIZ))
+            Token res = BoolTerm();
+            while (CurrentToken.compare_type(token_type.DIZ))
             {
-                eat(token_type.DIZ);
-                Token tmp = bool_term();
+                Eat(token_type.DIZ);
+                Token tmp = BoolTerm();
                 res.value = Convert.ToBoolean(res.value) || Convert.ToBoolean(tmp.value);
             }
             return res;
         }
-        Token bool_term()
+        protected Token BoolTerm()
         {
-            Token res = bool_fact();
-            while (current_token.compare_type(token_type.CON))
+            Token res = BoolFact();
+            while (CurrentToken.compare_type(token_type.CON))
             {
-                eat(token_type.CON);
-                Token tmp = bool_fact();
+                Eat(token_type.CON);
+                Token tmp = BoolFact();
                 res.value = Convert.ToBoolean(res.value) && Convert.ToBoolean(tmp.value);
             }
             return res;
         }
-        Token bool_fact()
+        protected Token BoolFact()
         {
             Token tmp;
-            if (current_token.compare_type(token_type.BOOL))
+            if (CurrentToken.compare_type(token_type.BOOL))
             {
-                tmp = current_token;
-                eat(tmp.type);
+                tmp = CurrentToken;
+                Eat(tmp.type);
                 return tmp;
             }
-            else if (current_token.compare_type(token_type.L_PAR))
+            else if (CurrentToken.compare_type(token_type.L_PAR))
             {
-                eat(token_type.L_PAR);
-                tmp = bool_expr();
-                eat(token_type.R_PAR);
+                Eat(token_type.L_PAR);
+                tmp = BoolExpr();
+                Eat(token_type.R_PAR);
+                return tmp;
+            }
+            else if (CurrentToken.compare_type(token_type.NOT))
+            {
+                Eat(token_type.NOT);
+                tmp = BoolFact();
+                if (tmp.compare_type(token_type.BOOL))
+                    tmp.value = !Convert.ToBoolean(tmp.value);
+                else
+                    Error();
                 return tmp;
             }
             else
-            {
-                tmp = real_expr();
-                if ((current_token.compare_type(token_type.LESS)) || (current_token.compare_type(token_type.MORE)) || (current_token.compare_type(token_type.EQUAL_BOOL)))
+            {                          
+                tmp = RealExpr();
+                if ((CurrentToken.compare_type(token_type.LESS)) || (CurrentToken.compare_type(token_type.MORE)) || (CurrentToken.compare_type(token_type.EQUAL_BOOL)))
                 {
                     Token tmp2;
-                    if (current_token.compare_type(token_type.MORE))
+                    if (CurrentToken.compare_type(token_type.MORE))
                     {
-                        eat(token_type.MORE);
-                        tmp2 = real_expr();
+                        Eat(token_type.MORE);
+                        tmp2 = RealExpr();
                         if (Convert.ToDouble(tmp.value) > Convert.ToDouble(tmp2.value))
                             return new Token(token_type.BOOL, true);
                         else
                             return new Token(token_type.BOOL, false);
                     }
-                    else if (current_token.compare_type(token_type.LESS))
+                    else if (CurrentToken.compare_type(token_type.LESS))
                     {
-                        eat(token_type.LESS);
-                        tmp2 = real_expr();
+                        Eat(token_type.LESS);
+                        tmp2 = RealExpr();
                         if (Convert.ToDouble(tmp.value) < Convert.ToDouble(tmp2.value))
                             return new Token(token_type.BOOL, true);
                         else
@@ -204,8 +217,8 @@ namespace My_own_lang_interpreter_console_
                     }
                     else
                     {
-                        eat(token_type.EQUAL_BOOL);
-                        tmp2 = real_expr();
+                        Eat(token_type.EQUAL_BOOL);
+                        tmp2 = RealExpr();
                         if (Math.Abs(Convert.ToDouble(tmp.value) - Convert.ToDouble(tmp2.value)) < delta)
                             return new Token(token_type.BOOL, true);
                         else
@@ -216,18 +229,18 @@ namespace My_own_lang_interpreter_console_
             }
 
         }
-        Token real_expr()
+        protected Token RealExpr()
         {
-            Token res = term();
+            Token res = Term();
             if ((res.compare_type(token_type.INTEGER)) || (res.compare_type(token_type.DOUBLE)))
             {
-                while (current_token.compare_type(token_type.PLUS) || (current_token.compare_type(token_type.MINUS)))
+                while (CurrentToken.compare_type(token_type.PLUS) || (CurrentToken.compare_type(token_type.MINUS)))
                 {
                     int sign = 1;
-                    if (current_token.compare_type(token_type.MINUS))                    
+                    if (CurrentToken.compare_type(token_type.MINUS))                    
                         sign = -1;                    
-                    eat(current_token.type);
-                    Token tmp = term();
+                    Eat(CurrentToken.type);
+                    Token tmp = Term();
                     if (tmp.compare_type(token_type.DOUBLE) || res.compare_type(token_type.DOUBLE))
                     {
                         res.value = Convert.ToDouble(res.value) + Convert.ToDouble(tmp.value) * sign;
@@ -239,16 +252,16 @@ namespace My_own_lang_interpreter_console_
             }
             return res;
         }
-        Token term()
+        protected Token Term()
         {
-            Token res = power();
+            Token res = Power();
             if ((res.compare_type(token_type.INTEGER)) || (res.compare_type(token_type.DOUBLE)))
             {
-                while (current_token.compare_type(token_type.DIV) || current_token.compare_type(token_type.MUL))
+                while (CurrentToken.compare_type(token_type.DIV) || CurrentToken.compare_type(token_type.MUL))
                 {
-                    token_type sign = current_token.type;
-                    eat(sign);
-                    Token tmp = power();
+                    token_type sign = CurrentToken.type;
+                    Eat(sign);
+                    Token tmp = Power();
                     if (sign == token_type.MUL)
                     {
                         res.value = Convert.ToDouble(res.value) * Convert.ToDouble(tmp.value);
@@ -263,146 +276,153 @@ namespace My_own_lang_interpreter_console_
             }
             return res;
         }
-        Token power()
+        protected Token Power()
         {
-            Token res = fact();
+            Token res = Fact();
             if (res.compare_type(token_type.INTEGER) || res.compare_type(token_type.DOUBLE))
             {
-                while (current_token.compare_type( token_type.POW))
+                while (CurrentToken.compare_type( token_type.POW))
                 {
-                    eat(token_type.POW);
-                    Token tmp = fact();
+                    Eat(token_type.POW);
+                    Token tmp = Fact();
                     res.value = Math.Pow(Convert.ToDouble(res.value), Convert.ToDouble(tmp.value));
                     res.type = token_type.DOUBLE;
                 }
             }
             return res;
         }
-        Token fact()
+        protected Token Fact()
         {
             Token tmp;
-            if (current_token.compare_type(token_type.INTEGER))
+            if (CurrentToken.compare_type(token_type.INTEGER))
             {
-                tmp = current_token;
-                eat(token_type.INTEGER);
+                tmp = CurrentToken;
+                Eat(token_type.INTEGER);
                 return tmp;
             }
-            else if (current_token.compare_type(token_type.DOUBLE))
+            else if (CurrentToken.compare_type(token_type.DOUBLE))
             {
-                tmp = current_token;
-                eat(token_type.DOUBLE);
+                tmp = CurrentToken;
+                Eat(token_type.DOUBLE);
                 return tmp;
             }
-            else if (current_token.compare_type(token_type.ID))
+            else if (CurrentToken.compare_type(token_type.ID))
             {
                 token_type t_type = token_type.EOF;
                 object t_value;
-                if (var_values.TryGetValue((string)current_token.value, out t_value) && var_types.TryGetValue((string)current_token.value, out t_type))
+                if (VarValues.TryGetValue((string)CurrentToken.value, out t_value) && VarTypes.TryGetValue((string)CurrentToken.value, out t_type))
                 {
-                    eat(token_type.ID);
+                    Eat(token_type.ID);
                     return new Token(t_type, t_value);
                 }
                 else
                 {
-                    error();
-                    return current_token;
+                    Error();
+                    return CurrentToken;
                 }
             }
-            else if (current_token.compare_type(token_type.L_PAR))
+            else if (CurrentToken.compare_type(token_type.L_PAR))
             {
-                eat(token_type.L_PAR);
-                tmp = real_expr();
-                eat(token_type.R_PAR);
+                Eat(token_type.L_PAR);
+                tmp = RealExpr();
+                Eat(token_type.R_PAR);
                 return tmp;
             }
             else
-                error();
-            return current_token;
+                Error();
+            return CurrentToken;
         }
-        private void if_sentense()
+        protected void IfSentense()
         {
-            eat(token_type.IF);
-            eat(token_type.L_PAR);
-            Token result = bool_expr();
-            eat(token_type.R_PAR);
+            Eat(token_type.IF);
+            Eat(token_type.L_PAR);
+            Token result = BoolExpr();
+            Eat(token_type.R_PAR);
             if (result.compare_type(token_type.BOOL))
             {
                 if (Convert.ToBoolean(result.value))
                 {
-                    if (current_token.compare_type(token_type.L_FIGURE))
-                        block();
+                    if (CurrentToken.compare_type(token_type.L_FIGURE))
+                        Block();
                     else
-                        sentense();
+                        Sentense();
                 }
                 else
                 {
-                    if (current_token.compare_type(token_type.L_FIGURE))
-                        skip_block();
+                    if (CurrentToken.compare_type(token_type.L_FIGURE))
+                        SkipBlock();
                     else
-                        skip_sentense();
+                        SkipSentense();
                 }                                          
                 
-                if (current_token.compare_type(token_type.ELSE))
+                if (CurrentToken.compare_type(token_type.ELSE))
                 {
-                    eat(token_type.ELSE);
+                    Eat(token_type.ELSE);
                     if (!Convert.ToBoolean(result.value))
                     {
-                        if (current_token.compare_type(token_type.L_FIGURE))
-                            block();
+                        if (CurrentToken.compare_type(token_type.L_FIGURE))
+                            Block();
                         else
-                            sentense();
+                            Sentense();
                     }
                     else
                     {
-                        if (current_token.compare_type(token_type.L_FIGURE))
-                            skip_block();
+                        if (CurrentToken.compare_type(token_type.L_FIGURE))
+                            SkipBlock();
                         else
-                            skip_sentense();
+                            SkipSentense();
                     }
                 }                
             }
             else            
-                error();
+                Error();
             
-        }
-        private void while_sentense()
+        }        
+        protected void WhileSentense()
         {
-            int begin = current_position;
-            eat(token_type.WHILE);
-            eat(token_type.L_PAR);
-            Token result = bool_expr();
-            eat(token_type.R_PAR);            
-            if (result.compare_type(token_type.BOOL))
+            int begin = CurrentPosition;
+            Eat(token_type.WHILE);
+            Eat(token_type.L_PAR);
+            Token result = BoolExpr();
+            Eat(token_type.R_PAR);
+            if (!result.compare_type(token_type.BOOL))
+                Error();
+            if(Convert.ToBoolean(result.value))
             {
-                if (Convert.ToBoolean(result.value))
-                {
-                    if (current_token.compare_type(token_type.L_FIGURE))
-                        block();
-                    else
-                        sentense();
-                    current_position = begin;
-                    while_sentense();
-                }
+                if (CurrentToken.compare_type(token_type.L_FIGURE))
+                    Block();
                 else
-                {
-                    if (current_token.compare_type(token_type.L_FIGURE))
-                        skip_block();
-                    else
-                        skip_sentense();
-                }
-                    
-                                          
+                    Sentense();
+                Eat(token_type.SEMI);
+                CurrentPosition = begin;
+                WhileSentense();
             }
             else
-                error();
-
+            {
+                if (CurrentToken.compare_type(token_type.L_FIGURE))
+                    SkipBlock();
+                else
+                    SkipSentense();
             }
-        private void function_call_sentense()
+            
+        }
+        protected void FunctionCallSentense()
         {
-            if (current_token.compare_type(token_type.WRITE_FUNCTION))               
-                throw new NotImplementedException();
-            else if (current_token.compare_type(token_type.READ_FUNCTION))                
-                throw new NotImplementedException();
+            if (CurrentToken.compare_type(token_type.WRITE_FUNCTION))
+                write_function();
+            else if (CurrentToken.compare_type(token_type.READ_FUNCTION))                
+                read_function();
         }        
+        protected string write()
+        {
+            Eat(token_type.WRITE_FUNCTION);
+            Eat(token_type.L_PAR);
+            Token tmp = Expression();
+            Eat(token_type.R_PAR);
+            return tmp.value.ToString();
+        }
+        public abstract void write_function();
+        public abstract void read_function();
+
     }
 }
